@@ -28,6 +28,7 @@ class _DropdownOverlay<T> extends StatefulWidget {
   final Duration? futureRequestDelay;
   final int maxLines;
   final double? overlayHeight;
+  final double? overlayMaxHeight;
   final TextStyle? hintStyle, headerStyle, noResultFoundStyle, listItemStyle;
   final EdgeInsets? headerPadding, listItemPadding, itemsListPadding;
   final Widget? searchRequestLoadingIndicator;
@@ -38,9 +39,12 @@ class _DropdownOverlay<T> extends StatefulWidget {
   final _NoResultFoundBuilder? noResultFoundBuilder;
   final CustomDropdownDecoration? decoration;
   final _DropdownType dropdownType;
+  final Widget Function(VoidCallback, Function(T))? listHeader;
+  final Widget Function(VoidCallback, Function(T))? listFooter;
+  final Offset? overlayOffset;
 
   const _DropdownOverlay({
-    Key? key,
+    super.key,
     required this.items,
     required this.itemsScrollCtrl,
     required this.size,
@@ -56,6 +60,7 @@ class _DropdownOverlay<T> extends StatefulWidget {
     required this.canCloseOutsideBounds,
     required this.maxLines,
     required this.overlayHeight,
+    required this.overlayMaxHeight,
     required this.dropdownType,
     required this.decoration,
     required this.hintStyle,
@@ -75,6 +80,9 @@ class _DropdownOverlay<T> extends StatefulWidget {
     required this.listItemBuilder,
     required this.headerListBuilder,
     required this.noResultFoundBuilder,
+    this.overlayOffset,
+    this.listHeader,
+    this.listFooter,
   });
 
   @override
@@ -82,7 +90,7 @@ class _DropdownOverlay<T> extends StatefulWidget {
 }
 
 class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
-  bool displayOverly = true, displayOverlayBottom = true;
+  bool displayOverlay = true, displayOverlayBottom = true;
   bool isSearchRequestLoading = false;
   bool? mayFoundSearchRequestResult;
   late List<T> items;
@@ -246,10 +254,10 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
 
   void onItemSelect(T value) {
     widget.onItemSelect(value);
-    if (widget.dropdownType == _DropdownType.singleSelect) {
-      setState(() => displayOverly = false);
-    }
+    if (widget.dropdownType == _DropdownType.singleSelect) hideOverlay();
   }
+
+  void hideOverlay() => setState(() => displayOverlay = false);
 
   @override
   Widget build(BuildContext context) {
@@ -260,7 +268,7 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
     final onSearch = widget.searchType != null;
 
     // overlay offset
-    final overlayOffset = Offset(-12, displayOverlayBottom ? 0 : 64);
+    final overlayOffset = widget.overlayOffset;
 
     // list padding
     final listPadding =
@@ -297,7 +305,7 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
             followerAnchor:
                 displayOverlayBottom ? Alignment.topLeft : Alignment.bottomLeft,
             showWhenUnlinked: false,
-            offset: overlayOffset,
+            offset: overlayOffset ?? const Offset(-12, 0),
             child: Container(
               key: key1,
               margin: _overlayOuterPadding,
@@ -320,13 +328,14 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
                 color: Colors.transparent,
                 child: _AnimatedSection(
                   animationDismissed: widget.hideOverlay,
-                  expand: displayOverly,
-                  axisAlignment: displayOverlayBottom ? 1.0 : -1.0,
-                  child: SizedBox(
+                  expand: displayOverlay,
+                  axisAlignment: 1.0,
+                  child: Container(
                     key: key2,
-                    height: items.length > 4
-                        ? widget.overlayHeight ?? (onSearch ? 270 : 225)
-                        : null,
+                    constraints: BoxConstraints(
+                        maxHeight:
+                            widget.overlayMaxHeight ?? (onSearch ? 270 : 225)),
+                    height: widget.overlayHeight,
                     child: ClipRRect(
                       borderRadius: decoration?.expandedBorderRadius ??
                           _defaultBorderRadius,
@@ -355,12 +364,13 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              if (widget.listHeader != null)
+                                widget.listHeader!
+                                    .call(hideOverlay, onItemSelect),
                               if (!widget.hideSelectedFieldWhenOpen)
                                 GestureDetector(
                                   behavior: HitTestBehavior.opaque,
-                                  onTap: () {
-                                    setState(() => displayOverly = false);
-                                  },
+                                  onTap: hideOverlay,
                                   child: Padding(
                                     padding: widget.headerPadding ??
                                         _defaultHeaderPadding,
@@ -405,9 +415,7 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
                                 else
                                   GestureDetector(
                                     behavior: HitTestBehavior.opaque,
-                                    onTap: () {
-                                      setState(() => displayOverly = false);
-                                    },
+                                    onTap: hideOverlay,
                                     child: Padding(
                                       padding: const EdgeInsetsDirectional.only(
                                         top: 12.0,
@@ -465,9 +473,7 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
                                 else
                                   GestureDetector(
                                     behavior: HitTestBehavior.opaque,
-                                    onTap: () {
-                                      setState(() => displayOverly = false);
-                                    },
+                                    onTap: hideOverlay,
                                     child: Padding(
                                       padding: const EdgeInsetsDirectional.only(
                                         top: 12.0,
@@ -529,7 +535,10 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
                                       ),
                                     )
                               else
-                                items.length > 4 ? Expanded(child: list) : list
+                                Flexible(child: list),
+                              if (widget.listFooter != null)
+                                widget.listFooter!
+                                    .call(hideOverlay, onItemSelect),
                             ],
                           ),
                         ),
@@ -548,7 +557,7 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
       return Stack(
         children: [
           GestureDetector(
-            onTap: () => setState(() => displayOverly = false),
+            onTap: hideOverlay,
             child: Container(
               width: MediaQuery.of(context).size.width,
               height: MediaQuery.of(context).size.height,

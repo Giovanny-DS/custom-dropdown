@@ -128,8 +128,11 @@ class CustomDropdown<T> extends StatefulWidget {
   final Widget? searchRequestLoadingIndicator;
 
   /// [CustomDropdown] opened/expanded area height.
-  /// Only applicable if items are greater than 4 otherwise adjust automatically.
   final double? overlayHeight;
+
+  /// [CustomDropdown] opened/expanded area max heigth.
+  /// If the height of the overlay exceeds this value, a scrollbar will appear.
+  final double? overlayMaxHeight;
 
   /// The [listItemBuilder] that will be used to build item on demand.
   final _ListItemBuilder<T>? listItemBuilder;
@@ -182,6 +185,19 @@ class CustomDropdown<T> extends StatefulWidget {
 
   final _DropdownType _dropdownType;
 
+  /// Widget to display as a header of the openned list.
+  /// receives the [hideOverlay] callback to close the overlay.
+  /// and [onItemSelect] callback to select the item.
+  final Widget Function(VoidCallback, Function(T))? listHeader;
+
+  /// Widget to display as a header of the openned list.
+  /// receives the [hideOverlay] callback to close the overlay.
+  /// and [onItemSelect] callback to select the item.
+  final Widget Function(VoidCallback, Function(T))? listFooter;
+
+  /// Sets the overlay position to the provided offset.
+  final Offset? overlayOffset;
+
   CustomDropdown({
     super.key,
     required this.items,
@@ -200,6 +216,7 @@ class CustomDropdown<T> extends StatefulWidget {
     this.hintBuilder,
     this.maxlines = 1,
     this.overlayHeight,
+    this.overlayMaxHeight,
     this.closedHeaderPadding,
     this.expandedHeaderPadding,
     this.itemsListPadding,
@@ -209,6 +226,9 @@ class CustomDropdown<T> extends StatefulWidget {
     this.excludeSelected = true,
     this.enabled = true,
     this.disabledDecoration,
+    this.listHeader,
+    this.listFooter,
+    this.overlayOffset,
   })  : assert(
           initialItem == null || controller == null,
           'Only one of initialItem or controller can be specified at a time',
@@ -218,9 +238,7 @@ class CustomDropdown<T> extends StatefulWidget {
           'Initial item must match with one of the item in items list.',
         ),
         assert(
-          controller == null ||
-              controller.value == null ||
-              items!.contains(controller.value),
+          controller == null || controller.value == null || items!.contains(controller.value),
           'Controller value must match with one of the item in items list.',
         ),
         _searchType = null,
@@ -259,6 +277,7 @@ class CustomDropdown<T> extends StatefulWidget {
     this.validateOnChange = true,
     this.maxlines = 1,
     this.overlayHeight,
+    this.overlayMaxHeight,
     this.closedHeaderPadding,
     this.expandedHeaderPadding,
     this.itemsListPadding,
@@ -269,6 +288,9 @@ class CustomDropdown<T> extends StatefulWidget {
     this.enabled = true,
     this.disabledDecoration,
     this.closeDropDownOnClearFilterSearch = false,
+    this.listHeader,
+    this.listFooter,
+    this.overlayOffset,
   })  : assert(
           initialItem == null || controller == null,
           'Only one of initialItem or controller can be specified at a time',
@@ -278,9 +300,7 @@ class CustomDropdown<T> extends StatefulWidget {
           'Initial item must match with one of the item in items list.',
         ),
         assert(
-          controller == null ||
-              controller.value == null ||
-              items!.contains(controller.value),
+          controller == null || controller.value == null || items!.contains(controller.value),
           'Controller value must match with one of the item in items list.',
         ),
         _searchType = _SearchType.onListData,
@@ -317,6 +337,7 @@ class CustomDropdown<T> extends StatefulWidget {
     this.validateOnChange = true,
     this.maxlines = 1,
     this.overlayHeight,
+    this.overlayMaxHeight,
     this.closedHeaderPadding,
     this.expandedHeaderPadding,
     this.itemsListPadding,
@@ -328,6 +349,9 @@ class CustomDropdown<T> extends StatefulWidget {
     this.enabled = true,
     this.disabledDecoration,
     this.closeDropDownOnClearFilterSearch = false,
+    this.listHeader,
+    this.listFooter,
+    this.overlayOffset,
   })  : assert(
           initialItem == null || controller == null,
           'Only one of initialItem or controller can be specified at a time',
@@ -361,26 +385,26 @@ class CustomDropdown<T> extends StatefulWidget {
     this.hideSelectedFieldWhenExpanded = false,
     this.maxlines = 1,
     this.overlayHeight,
+    this.overlayMaxHeight,
     this.closedHeaderPadding,
     this.expandedHeaderPadding,
     this.itemsListPadding,
     this.listItemPadding,
     this.enabled = true,
     this.disabledDecoration,
+    this.listHeader,
+    this.listFooter,
+    this.overlayOffset,
   })  : assert(
           initialItems == null || multiSelectController == null,
           'Only one of initialItems or controller can be specified at a time',
         ),
         assert(
-          initialItems == null ||
-              initialItems.isEmpty ||
-              initialItems.any((e) => items!.contains(e)),
+          initialItems == null || initialItems.isEmpty || initialItems.any((e) => items!.contains(e)),
           'Initial items must match with the items in the items list.',
         ),
         assert(
-          multiSelectController == null ||
-              multiSelectController.value.isEmpty ||
-              multiSelectController.value.any((e) => items!.contains(e)),
+          multiSelectController == null || multiSelectController.value.isEmpty || multiSelectController.value.any((e) => items!.contains(e)),
           'Controller value must match with one of the item in items list.',
         ),
         _searchType = null,
@@ -422,6 +446,7 @@ class CustomDropdown<T> extends StatefulWidget {
     this.hideSelectedFieldWhenExpanded = false,
     this.maxlines = 1,
     this.overlayHeight,
+    this.overlayMaxHeight,
     this.closedHeaderPadding,
     this.expandedHeaderPadding,
     this.itemsListPadding,
@@ -429,20 +454,19 @@ class CustomDropdown<T> extends StatefulWidget {
     this.enabled = true,
     this.disabledDecoration,
     this.closeDropDownOnClearFilterSearch = false,
+    this.listHeader,
+    this.listFooter,
+    this.overlayOffset,
   })  : assert(
           initialItems == null || multiSelectController == null,
           'Only one of initialItems or controller can be specified at a time',
         ),
         assert(
-          initialItems == null ||
-              initialItems.isEmpty ||
-              initialItems.any((e) => items!.contains(e)),
+          initialItems == null || initialItems.isEmpty || initialItems.any((e) => items!.contains(e)),
           'Initial items must match with the items in the items list.',
         ),
         assert(
-          multiSelectController == null ||
-              multiSelectController.value.isEmpty ||
-              multiSelectController.value.any((e) => items!.contains(e)),
+          multiSelectController == null || multiSelectController.value.isEmpty || multiSelectController.value.any((e) => items!.contains(e)),
           'Controller value must match with one of the item in items list.',
         ),
         _searchType = _SearchType.onListData,
@@ -480,6 +504,7 @@ class CustomDropdown<T> extends StatefulWidget {
     this.validateOnChange = true,
     this.maxlines = 1,
     this.overlayHeight,
+    this.overlayMaxHeight,
     this.searchRequestLoadingIndicator,
     this.closedHeaderPadding,
     this.expandedHeaderPadding,
@@ -490,6 +515,9 @@ class CustomDropdown<T> extends StatefulWidget {
     this.enabled = true,
     this.disabledDecoration,
     this.closeDropDownOnClearFilterSearch = false,
+    this.listHeader,
+    this.listFooter,
+    this.overlayOffset,
   })  : assert(
           initialItems == null || multiSelectController == null,
           'Only one of initialItems or controller can be specified at a time',
@@ -532,11 +560,9 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
   void initState() {
     super.initState();
 
-    selectedItemNotifier =
-        widget.controller ?? SingleSelectController(widget.initialItem);
+    selectedItemNotifier = widget.controller ?? SingleSelectController(widget.initialItem);
 
-    selectedItemsNotifier = widget.multiSelectController ??
-        MultiSelectController(widget.initialItems ?? []);
+    selectedItemsNotifier = widget.multiSelectController ?? MultiSelectController(widget.initialItems ?? []);
 
     selectedItemNotifier.addListener(_selectedItemListener);
 
@@ -547,27 +573,23 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
   void didUpdateWidget(covariant CustomDropdown<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (widget.initialItem != oldWidget.initialItem &&
-        selectedItemNotifier.value != widget.initialItem) {
+    if (widget.initialItem != oldWidget.initialItem && selectedItemNotifier.value != widget.initialItem) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         selectedItemNotifier.value = widget.initialItem;
       });
     }
 
-    if (widget.initialItems != oldWidget.initialItems &&
-        selectedItemsNotifier.value != widget.initialItems) {
+    if (widget.initialItems != oldWidget.initialItems && selectedItemsNotifier.value != widget.initialItems) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         selectedItemsNotifier.value = widget.initialItems ?? [];
       });
     }
 
-    if (widget.controller != oldWidget.controller &&
-        widget.controller != null) {
+    if (widget.controller != oldWidget.controller && widget.controller != null) {
       selectedItemNotifier = widget.controller!;
     }
 
-    if (widget.multiSelectController != oldWidget.multiSelectController &&
-        widget.multiSelectController != null) {
+    if (widget.multiSelectController != oldWidget.multiSelectController && widget.multiSelectController != null) {
       selectedItemsNotifier = widget.multiSelectController!;
     }
   }
@@ -601,12 +623,10 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
       child: FormField<(T?, List<T>)>(
         initialValue: (selectedItemNotifier.value, selectedItemsNotifier.value),
         validator: (val) {
-          if (widget._dropdownType == _DropdownType.singleSelect &&
-              widget.validator != null) {
+          if (widget._dropdownType == _DropdownType.singleSelect && widget.validator != null) {
             return widget.validator!(val?.$1);
           }
-          if (widget._dropdownType == _DropdownType.multipleSelect &&
-              widget.listValidator != null) {
+          if (widget._dropdownType == _DropdownType.multipleSelect && widget.listValidator != null) {
             return widget.listValidator!(val?.$2 ?? []);
           }
           return null;
@@ -639,8 +659,7 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
                         selectedItemsNotifier.value = currentVal;
                     }
                   },
-                  noResultFoundText:
-                      widget.noResultFoundText ?? 'No result found.',
+                  noResultFoundText: widget.noResultFoundText ?? 'No result found.',
                   noResultFoundBuilder: widget.noResultFoundBuilder,
                   items: widget.items ?? [],
                   itemsScrollCtrl: widget.itemsScrollController,
@@ -661,20 +680,22 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
                   hintBuilder: widget.hintBuilder,
                   decoration: decoration,
                   overlayHeight: widget.overlayHeight,
+                  overlayMaxHeight: widget.overlayMaxHeight,
                   excludeSelected: widget.excludeSelected,
                   canCloseOutsideBounds: widget.canCloseOutsideBounds,
                   searchType: widget._searchType,
                   futureRequest: widget.futureRequest,
                   futureRequestDelay: widget.futureRequestDelay,
-                  hideSelectedFieldWhenOpen:
-                      widget.hideSelectedFieldWhenExpanded,
+                  hideSelectedFieldWhenOpen: widget.hideSelectedFieldWhenExpanded,
                   maxLines: widget.maxlines,
                   headerPadding: widget.expandedHeaderPadding,
                   itemsListPadding: widget.itemsListPadding,
                   listItemPadding: widget.listItemPadding,
-                  searchRequestLoadingIndicator:
-                      widget.searchRequestLoadingIndicator,
+                  searchRequestLoadingIndicator: widget.searchRequestLoadingIndicator,
                   dropdownType: widget._dropdownType,
+                  listFooter: widget.listFooter,
+                  listHeader: widget.listHeader,
+                  overlayOffset: widget.overlayOffset,
                 );
               },
               child: (showCallback) {
@@ -693,28 +714,16 @@ class _CustomDropdownState<T> extends State<CustomDropdown<T>> {
                         : enabled
                             ? decoration?.closedBorderRadius
                             : disabledDecoration?.borderRadius,
-                    shadow: enabled
-                        ? decoration?.closedShadow
-                        : disabledDecoration?.shadow,
-                    hintStyle: enabled
-                        ? decoration?.hintStyle
-                        : disabledDecoration?.hintStyle,
-                    headerStyle: enabled
-                        ? decoration?.headerStyle
-                        : disabledDecoration?.headerStyle,
+                    shadow: enabled ? decoration?.closedShadow : disabledDecoration?.shadow,
+                    hintStyle: enabled ? decoration?.hintStyle : disabledDecoration?.hintStyle,
+                    headerStyle: enabled ? decoration?.headerStyle : disabledDecoration?.headerStyle,
                     hintText: safeHintText,
                     hintBuilder: widget.hintBuilder,
                     headerBuilder: widget.headerBuilder,
                     headerListBuilder: widget.headerListBuilder,
-                    prefixIcon: enabled
-                        ? decoration?.prefixIcon
-                        : disabledDecoration?.prefixIcon,
-                    suffixIcon: enabled
-                        ? decoration?.closedSuffixIcon
-                        : disabledDecoration?.suffixIcon,
-                    fillColor: enabled
-                        ? decoration?.closedFillColor
-                        : disabledDecoration?.fillColor,
+                    prefixIcon: enabled ? decoration?.prefixIcon : disabledDecoration?.prefixIcon,
+                    suffixIcon: enabled ? decoration?.closedSuffixIcon : disabledDecoration?.suffixIcon,
+                    fillColor: enabled ? decoration?.closedFillColor : disabledDecoration?.fillColor,
                     maxLines: widget.maxlines,
                     headerPadding: widget.closedHeaderPadding,
                     dropdownType: widget._dropdownType,
